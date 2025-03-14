@@ -1,0 +1,12 @@
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_1.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_10.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_11.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_12.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_2.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_3.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_4.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_5.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_6.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_7.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_8.root
+/pnfs/e1039/scratch/mhossain/vec_data_in/BT/processed_RUS_DY_DUMP_DEC29_9.root
