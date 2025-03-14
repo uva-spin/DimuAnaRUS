@@ -5,6 +5,7 @@ This module allows you to perform event generation and reconstruction using the 
 
 ## Steps to Run MC Simulations:
 1. Clone the repository:
+    ```bash
    git clone https://github.com/uva-spin/DimuAnaRUS 
 
 2. **Compile the script** (if you haven’t done so already):
