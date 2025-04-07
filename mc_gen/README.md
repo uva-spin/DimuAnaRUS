@@ -17,7 +17,7 @@ This module allows you to perform event generation and reconstruction using the 
     ```
 3. **Run a test job locally** and check the output files:
     ```bash
-    root -b 'FunSim.C(5)'
+    root -b 'Fun4Sim.C(5)'
     ```
 4. **If everything looks correct**, run the job on the Rivanna HPC with a few events:
     ```bash
