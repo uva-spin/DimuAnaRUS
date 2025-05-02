@@ -36,7 +36,10 @@ DimuAnaRUS::DimuAnaRUS(const std::string& name)
     true_mode(false),
     reco_mode(false),
     data_trig_mode(false),
+    process_id(14),
+    source_flag(2),
     mc_trig_mode(true)
+    
 {
   ;
 }
@@ -137,18 +140,18 @@ int DimuAnaRUS::InitRun(PHCompositeNode* startNode)
 		m_tree->Branch("rec_pz_st3", &rec_pz_st3);
 
 
-		m_tree->Branch("rec_dimu_vx", &rec_dimu_vx);
-		m_tree->Branch("rec_dimu_vy", &rec_dimu_vy);
-		m_tree->Branch("rec_dimu_vz", &rec_dimu_vz);
-		m_tree->Branch("rec_dimu_px", &rec_dimu_px);
-		m_tree->Branch("rec_dimu_py", &rec_dimu_py);
-		m_tree->Branch("rec_dimu_pz", &rec_dimu_pz);
-		m_tree->Branch("rec_dimu_mass", &rec_dimu_mass);
-		m_tree->Branch("rec_dimu_xf", &rec_dimu_xf);
-		m_tree->Branch("rec_dimu_x1", &rec_dimu_x1);
-		m_tree->Branch("rec_dimu_x2", &rec_dimu_x2);
-		//m_tree->Branch("top_bot", &top_bot);
-		//m_tree->Branch("bot_top", &bot_top);
+		if  (saveDimuonOnly ==true){
+			m_tree->Branch("rec_dimu_vx", &rec_dimu_vx);
+			m_tree->Branch("rec_dimu_vy", &rec_dimu_vy);
+			m_tree->Branch("rec_dimu_vz", &rec_dimu_vz);
+			m_tree->Branch("rec_dimu_px", &rec_dimu_px);
+			m_tree->Branch("rec_dimu_py", &rec_dimu_py);
+			m_tree->Branch("rec_dimu_pz", &rec_dimu_pz);
+			m_tree->Branch("rec_dimu_mass", &rec_dimu_mass);
+			m_tree->Branch("rec_dimu_xf", &rec_dimu_xf);
+			m_tree->Branch("rec_dimu_x1", &rec_dimu_x1);
+			m_tree->Branch("rec_dimu_x2", &rec_dimu_x2);
+		}
 	}
 
 	if (true_mode) {
@@ -275,9 +278,9 @@ int DimuAnaRUS::process_event(PHCompositeNode* startNode)
 
 					if(hit->get_track_id() != trk->get_track_id()) continue;
 					int processID_;
-					if(trk->get_charge() >0) processID_ =15;
-					else processID_ =25;
-					int sourceFlag_= 2;
+					if(trk->get_charge() >0) processID_ =process_id;
+					else processID_ =process_id+10;
+					int sourceFlag_= source_flag;
 					unsigned int encodedValue = EncodeProcess(processID_, sourceFlag_);
 					//cout << "charge: "<< trk->get_charge() <<endl;
 					//cout << "encodedValue: "<< encodedValue<< endl;
@@ -299,7 +302,7 @@ int DimuAnaRUS::process_event(PHCompositeNode* startNode)
 	//std::cout << "Size of m_sq_dim_vec: " << m_sq_dim_vec->size() << std::endl;
 
 	if(reco_mode == true){
-		ResetRecoBranches();
+		ResetTrackRecoBranches();
 
 		for (auto it = m_sq_trk_vec->begin(); it != m_sq_trk_vec->end(); ++it) {
 			SRecTrack* trk = dynamic_cast<SRecTrack*>(*it);
@@ -329,39 +332,43 @@ int DimuAnaRUS::process_event(PHCompositeNode* startNode)
 			rec_pz_st3.push_back(trk->get_mom_st3().Z());
 		}
 
-		for (auto it = m_sq_dim_vec->begin(); it != m_sq_dim_vec->end(); it++) {
-			SRecDimuon& sdim = dynamic_cast<SRecDimuon&>(**it);
-			sdim.calcVariables(); //eventually need to assign 1 or 2 depending on the target or dump; more at https://github.com/E1039-Collaboration/e1039-core/pull/149
-			int trk_id_pos = sdim.get_track_id_pos();
-			int trk_id_neg = sdim.get_track_id_neg();
-			SRecTrack& trk_pos = dynamic_cast<SRecTrack&>(*(m_sq_trk_vec->at(trk_id_pos))); 
-			SRecTrack& trk_neg = dynamic_cast<SRecTrack&>(*(m_sq_trk_vec->at(trk_id_neg))); 
-			// Fill dimuon vectors
-			rec_dimu_vx.push_back(sdim.get_pos().X());
-			rec_dimu_vy.push_back(sdim.get_pos().Y());
-			rec_dimu_vz.push_back(sdim.get_pos().Z());
-			rec_dimu_px.push_back(sdim.get_mom().Px());
-			rec_dimu_py.push_back(sdim.get_mom().Py());
-			rec_dimu_pz.push_back(sdim.get_mom().Pz());
-			rec_dimu_mass.push_back(sdim.get_mom().M());
-			rec_dimu_x1.push_back(sdim.x1);
-			rec_dimu_x2.push_back(sdim.x2);
-			rec_dimu_xf.push_back(sdim.xF);
+
+		if  (saveDimuonOnly ==true){
+			ResetDimuRecoBranches();
+			for (auto it = m_sq_dim_vec->begin(); it != m_sq_dim_vec->end(); it++) {
+				SRecDimuon& sdim = dynamic_cast<SRecDimuon&>(**it);
+				sdim.calcVariables(); //eventually need to assign 1 or 2 depending on the target or dump; more at https://github.com/E1039-Collaboration/e1039-core/pull/149
+				int trk_id_pos = sdim.get_track_id_pos();
+				int trk_id_neg = sdim.get_track_id_neg();
+				SRecTrack& trk_pos = dynamic_cast<SRecTrack&>(*(m_sq_trk_vec->at(trk_id_pos))); 
+				SRecTrack& trk_neg = dynamic_cast<SRecTrack&>(*(m_sq_trk_vec->at(trk_id_neg))); 
+				// Fill dimuon vectors
+				rec_dimu_vx.push_back(sdim.get_pos().X());
+				rec_dimu_vy.push_back(sdim.get_pos().Y());
+				rec_dimu_vz.push_back(sdim.get_pos().Z());
+				rec_dimu_px.push_back(sdim.get_mom().Px());
+				rec_dimu_py.push_back(sdim.get_mom().Py());
+				rec_dimu_pz.push_back(sdim.get_mom().Pz());
+				rec_dimu_mass.push_back(sdim.get_mom().M());
+				rec_dimu_x1.push_back(sdim.x1);
+				rec_dimu_x2.push_back(sdim.x2);
+				rec_dimu_xf.push_back(sdim.xF);
 
 
-			/*
+				/*
 
-			bool pos_top = m_rs.PosTop()->FindRoad(trk_pos.getTriggerRoad());
-			bool pos_bot = m_rs.PosBot()->FindRoad(trk_pos.getTriggerRoad());
-			bool neg_top = m_rs.NegTop()->FindRoad(trk_neg.getTriggerRoad());
-			bool neg_bot = m_rs.NegBot()->FindRoad(trk_neg.getTriggerRoad());
-			bool top_bot_ = pos_top && neg_bot;
-			bool bot_top_ =  pos_bot && neg_top;
-			top_bot.push_back(top_bot_);
-			bot_top.push_back(bot_top_);
+				   bool pos_top = m_rs.PosTop()->FindRoad(trk_pos.getTriggerRoad());
+				   bool pos_bot = m_rs.PosBot()->FindRoad(trk_pos.getTriggerRoad());
+				   bool neg_top = m_rs.NegTop()->FindRoad(trk_neg.getTriggerRoad());
+				   bool neg_bot = m_rs.NegBot()->FindRoad(trk_neg.getTriggerRoad());
+				   bool top_bot_ = pos_top && neg_bot;
+				   bool bot_top_ =  pos_bot && neg_top;
+				   top_bot.push_back(top_bot_);
+				   bot_top.push_back(bot_top_);
 
-			*/
-		}   
+*/
+			}
+		}	
 	}
 	m_tree->Fill();
 	return Fun4AllReturnCodes::EVENT_OK;
@@ -396,7 +403,7 @@ void DimuAnaRUS::ResetTrueBranches() {
 }
 
 
-void DimuAnaRUS::ResetRecoBranches() {
+void DimuAnaRUS::ResetTrackRecoBranches() {
 	rec_charge.clear();
 	rec_vx.clear(); rec_vy.clear(); rec_vz.clear();
 	rec_px.clear(); rec_py.clear(); rec_pz.clear();
@@ -404,7 +411,8 @@ void DimuAnaRUS::ResetRecoBranches() {
 	rec_px_st1.clear(); rec_py_st1.clear(); rec_pz_st1.clear();
 	rec_x_st3.clear(); rec_y_st3.clear(); rec_z_st3.clear();
 	rec_px_st3.clear(); rec_py_st3.clear(); rec_pz_st3.clear();
-
+}
+void DimuAnaRUS::ResetDimuRecoBranches() {
 	rec_dimu_vx.clear();
 	rec_dimu_vy.clear();
 	rec_dimu_vz.clear();

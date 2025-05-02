@@ -40,12 +40,16 @@ int Fun4Sim(const int nevent = 10)
 	const double FMAGSTR = -1.044;
 	const double KMAGSTR = -1.025;
 
+
+	//for single muon
+	const bool mu_pos = true;
+	const bool mu_neg = false;
+
+
 	//! Particle generator flag.  Only one of these must be true.
-	const bool gen_pythia8  = true;
-	const bool gen_cosmic   = false;
-	const bool gen_particle = false;
+	const bool gen_pythia8  = false;
+	const bool gen_particle = true;
 	const bool read_hepmc   = false;
-	const bool gen_e906dim =  false; // cf. SQPrimaryParticleGen
 
 	//! Use SQPrimaryVertexGen or not.
 	const bool SQ_vtx_gen = true;
@@ -58,12 +62,6 @@ int Fun4Sim(const int nevent = 10)
 	rc->set_DoubleFlag("SIGY_BEAM", 0.3);
 	rc->set_DoubleFlag("Z_UPSTREAM", -700.);
 
-	if(gen_cosmic) {
-		rc->init("cosmic");
-		rc->set_BoolFlag("COARSE_MODE", true);
-		rc->set_DoubleFlag("KMAGSTR", 0.);
-		rc->set_DoubleFlag("FMAGSTR", 0.);
-	}
 	if(SQ_vtx_gen) { // cf. SQPrimaryVertexGen
 		//rc->set_CharFlag("VTX_GEN_MATERIAL_MODE", "All"); // All, Target, Dump, TargetDumpGap or Manual
 		rc->set_CharFlag("VTX_GEN_MATERIAL_MODE", "Target"); // All, Target, Dump, TargetDumpGap or Manual
@@ -84,37 +82,6 @@ int Fun4Sim(const int nevent = 10)
 	Fun4AllServer *se = Fun4AllServer::instance();
 	se->Verbosity(0);
 
-
-	// pythia8
-	if(gen_pythia8) {    
-		PHPythia8 *pythia8 = new PHPythia8();
-		//pythia8->Verbosity(99);
-		pythia8->set_config_file("phpythia8_DY.cfg");
-		//pythia8->set_config_file("phpythia8_Jpsi.cfg"); // Jpsi, Jpsi_direct, psip
-		if(SQ_vtx_gen) pythia8->enableLegacyVtxGen();
-		else{
-			pythia8->set_vertex_distribution_mean(0, 0, target_coil_pos_z, 0);
-		} 
-		pythia8->set_embedding_id(1);
-		se->registerSubsystem(pythia8);
-
-		pythia8->set_trigger_AND();
-
-		PHPy8ParticleTrigger* trigger_mup = new PHPy8ParticleTrigger();
-		trigger_mup->AddParticles("-13");
-		//trigger_mup->SetPxHighLow(7, 0.5);
-		//trigger_mup->SetPyHighLow(6, -6);
-		trigger_mup->SetPzHighLow(120, 10);
-		pythia8->register_trigger(trigger_mup);
-
-		PHPy8ParticleTrigger* trigger_mum = new PHPy8ParticleTrigger();
-		trigger_mum->AddParticles("13");
-		//trigger_mum->SetPxHighLow(-0.5, 7);
-		//trigger_mum->SetPyHighLow(6, -6);
-		trigger_mum->SetPzHighLow(120, 10);
-		pythia8->register_trigger(trigger_mum);
-	}
-
 	if(gen_pythia8 || read_hepmc) {
 		HepMCNodeReader *hr = new HepMCNodeReader();
 		hr->set_particle_filter_on(true);
@@ -123,7 +90,7 @@ int Fun4Sim(const int nevent = 10)
 		se->registerSubsystem(hr);
 	}
 	// multi particle gun
-	if(gen_particle) {
+	if(gen_particle && mu_pos==true) {
 		PHG4SimpleEventGenerator *genp = new PHG4SimpleEventGenerator("MUP");
 		genp->set_seed(125);
 		genp->add_particles("mu+", nmu);  // mu+,e+,proton,pi+,Upsilon
@@ -149,7 +116,7 @@ int Fun4Sim(const int nevent = 10)
 		se->registerSubsystem(genp);
 	}
 
-	if(gen_particle) {
+	if(gen_particle  && mu_neg ==true) {
 		PHG4SimpleEventGenerator *genm = new PHG4SimpleEventGenerator("MUM");
 		genm->set_seed(12);
 		genm->add_particles("mu-", nmu);  // mu+,e+,proton,pi+,Upsilon
@@ -173,38 +140,6 @@ int Fun4Sim(const int nevent = 10)
 		se->registerSubsystem(genm);
 	}
 
-	// E906LegacyGen
-	if(gen_e906dim){
-		SQPrimaryParticleGen *e906legacy = new  SQPrimaryParticleGen();
-		const bool pythia_gen = false;
-		const bool drellyan_gen = false;
-		const bool JPsi_gen = true;
-		const bool Psip_gen = false;  
-
-		if(drellyan_gen){
-			e906legacy->set_xfRange(0.1, 0.5); //[-1.,1.]
-			e906legacy->set_massRange(1.0, 8.0);
-			e906legacy->enableDrellYanGen();
-		}
-		if(Psip_gen){ 
-			e906legacy->set_xfRange(0.1, 0.5); //[-1.,1.]
-			e906legacy->enablePsipGen();
-		}
-		if(JPsi_gen){
-			e906legacy->set_xfRange(0.1, 0.5); //[-1.,1.]
-			e906legacy->enableJPsiGen();
-		}
-		if(pythia_gen){ 
-			e906legacy->enablePythia();
-			e906legacy->set_config_file("phpythia8_DY.cfg");
-		}
-		se->registerSubsystem(e906legacy);
-	}
-
-	if(gen_cosmic) {
-		SQCosmicGen* cosmicGen = new SQCosmicGen();
-		se->registerSubsystem(cosmicGen);
-	}
 
 	// Fun4All G4 module
 	PHG4Reco *g4Reco = new PHG4Reco();
@@ -256,7 +191,7 @@ int Fun4Sim(const int nevent = 10)
 	/// Save only events that are in the geometric acceptance.
 	SQGeomAcc* geom_acc = new SQGeomAcc();
 	//geom_acc->SetMuonMode(SQGeomAcc::PAIR); // PAIR, PAIR_TBBT, SINGLE, SINGLE_T, etc.
-	geom_acc->SetMuonMode(SQGeomAcc::PAIR_TBBT); // PAIR, PAIR_TBBT, SINGLE, SINGLE_T, etc.
+	geom_acc->SetMuonMode(SQGeomAcc::SINGLE); // PAIR, PAIR_TBBT, SINGLE, SINGLE_T, etc.
 	geom_acc->SetPlaneMode(SQGeomAcc::HODO_CHAM); // HODO, CHAM or HODO_CHAM
 	geom_acc->SetNumOfH1EdgeElementsExcluded(4); // Exclude 4 elements at H1 edges
 	se->registerSubsystem(geom_acc);
@@ -336,7 +271,7 @@ int Fun4Sim(const int nevent = 10)
 	dimuAna->SetSourceFlag(1);  //for target =1, dump =2, gap =3
 	dimuAna->SetMCTrueMode(true);
         dimuAna->SetOutputFileName("RUS.root");
-        dimuAna->SetSaveOnlyDimuon(true);
+        dimuAna->SetSaveOnlyDimuon(false);
         dimuAna->SetRecoMode(true);
         se->registerSubsystem(dimuAna);
 

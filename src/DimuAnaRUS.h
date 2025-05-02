@@ -35,7 +35,11 @@ class DimuAnaRUS: public SubsysReco {
 	bool mc_trig_mode;
 	bool saveDimuonOnly;
 	bool true_dimu_mode;
+	int process_id;
+	int source_flag;
 
+	void SetProcessId(int proc_id) { process_id = proc_id; }
+	void SetSourceFlag(int src_flag) { source_flag = src_flag; }
 	void SetMCTrueMode(bool enable) { true_mode = enable; }
 	void SetMCDimuonMode(bool enable) { true_dimu_mode = enable; }
 	void SetRecoMode(bool enable) { reco_mode = enable; }
@@ -67,7 +71,8 @@ class DimuAnaRUS: public SubsysReco {
 	void SetFileName(const std::string& name) { m_file_name = name; }
 	void ResetHitBranches();
 	void ResetTrueBranches();
-	void ResetRecoBranches();
+	void ResetTrackRecoBranches();
+	void ResetDimuRecoBranches();
 
 	private:
 
