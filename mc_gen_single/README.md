@@ -1,6 +1,6 @@
 # Event Generation and Reconstruction with RUS for Single Muons
 
-This module allows you to perform event generation and reconstruction for single muon particles using the **`Fun4AllSim.C`** macro. Similar to the [SimChainDev module](https://github.com/E1039-Collaboration/e1039-analysis/tree/master/SimChainDev), this script facilitates event simulation, but with an **additional feature**: support for the **RUS file manager** for input and output handling.
+This module allows you to perform event generation and reconstruction for single muon particles using the Fun4All macro. Similar to the [SimChainDev module](https://github.com/E1039-Collaboration/e1039-analysis/tree/master/SimChainDev), this script facilitates event simulation, but with an **additional feature**: support for the **RUS file manager** for input and output handling.
 
 
 ## Steps to Run MC Simulations:
