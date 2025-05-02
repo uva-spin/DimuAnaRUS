@@ -255,16 +255,6 @@ int Fun4Sim(const int nevent = 10)
 	// Output
 	///////////////////////////////////////////
 
-	// DST output manager
-	Fun4AllDstOutputManager *out = new Fun4AllDstOutputManager("DSTOUT", "DST.root");
-	se->registerOutputManager(out);
-
-	//if(gen_pythia8 && !read_hepmc) {
-	//  Fun4AllHepMCOutputManager *out = new Fun4AllHepMCOutputManager("HEPMCOUT", "hepmcout.txt");
-	//  out->set_embedding_id(1);
-	//  se->registerOutputManager(out);
-	//}
-
 	DimuAnaRUS* dimuAna = new DimuAnaRUS();
         dimuAna->SetTreeName("tree");
 	dimuAna->SetProcessId(14);   //for single muon use dy=11, jpsi=12,  psi'=13, single muon =14
