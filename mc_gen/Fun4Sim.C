@@ -32,6 +32,7 @@ int Fun4Sim(const int nevent = 10)
 	const bool do_absorber = true;
 	const bool do_dphodo = true;
 	const bool do_station1DC = false;       //station-1 drift chamber should be turned off by default
+	const bool reco_mode = false;
 
 	const double target_l = 7.9; //cm
 	const double target_z = (7.9-target_l)/2.; //cm
@@ -39,6 +40,7 @@ int Fun4Sim(const int nevent = 10)
 
 	const double FMAGSTR = -1.044;
 	const double KMAGSTR = -1.025;
+
 
 	//! Particle generator flag.  Only one of these must be true.
 	const bool gen_pythia8  = true;
@@ -287,7 +289,7 @@ int Fun4Sim(const int nevent = 10)
 	//se->registerSubsystem(evt_filter);
 	// Tracking module
 	// input - we need a dummy to drive the event loop
-
+if(reco_mode==true){
 	SQReco* reco = new SQReco();
 	reco->Verbosity(1);
 	reco->set_legacy_rec_container(false); 
@@ -304,7 +306,7 @@ int Fun4Sim(const int nevent = 10)
 	SQVertexing* vtx = new SQVertexing();
 	vtx->Verbosity(1);
 	se->registerSubsystem(vtx);
-
+}
 	if(read_hepmc) {
 		Fun4AllHepMCInputManager *in = new Fun4AllHepMCInputManager("HEPMCIN");
 		in->Verbosity(10);
@@ -337,7 +339,7 @@ int Fun4Sim(const int nevent = 10)
 	dimuAna->SetMCTrueMode(true);
         dimuAna->SetOutputFileName("RUS.root");
         dimuAna->SetSaveOnlyDimuon(true);
-        dimuAna->SetRecoMode(true);
+        dimuAna->SetRecoMode(reco_mode);
         se->registerSubsystem(dimuAna);
 
 	const bool count_only_good_events = true;

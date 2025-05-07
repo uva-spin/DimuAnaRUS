@@ -33,16 +33,14 @@ This module allows you to perform event generation and reconstruction using the 
     ```bash
     /sfs/weka/scratch/<user_name>/MC
 
-# RUS File Options in `Fun4AllSim.C`
-
-To configure the RUS file options in `Fun4AllSim.C`, use the following settings:
-
+Set the following flags in your `Fun4Sim.C` macro to spcific saved dimuons conditions:
 ```cpp
 DimuAnaRUS* dimuAna = new DimuAnaRUS();
 dimuAna->SetTreeName("tree");          // Set tree name
 dimuAna->SetMCTrueMode(true);          // Set to false if true particle info is not needed
-dimuAna->SetSaveOnlyDimuon(true);      // Set to false if not saving dimuons
-dimuAna->SetRecoMode(true);            // Set to false if reconstruction is not needed
+dimuAna->SetSaveOnlyDimuon(false);      // Set to false if not saving dimuons
+dimuAna->SetRecoMode(reco_mode);            // Set to reco_mode ==true if reconstruction is needed
+dimuAna->SetProcessId(14);   //for single muon use dy=11, jpsi=12,  psi'=13, single muon =14
+dimuAna->SetSourceFlag(1);  //for target =1, dump =2, gap =3
 dimuAna->SetOutputFileName("RUS.root");
 se->registerSubsystem(dimuAna);
-
