@@ -56,7 +56,7 @@ DimuAnaRUS* dimuAna = new DimuAnaRUS();
 dimuAna->SetTreeName("tree");          // Set tree name
 dimuAna->SetMCTrueMode(true);          // Set to false if true particle info is not needed
 dimuAna->SetSaveOnlyDimuon(false);      // Set to false if not saving dimuons
-dimuAna->SetRecoMode(true);            // Set to false if reconstruction is not needed
+dimuAna->SetRecoMode(reco_mode);            // Set to reco_mode ==false if reconstruction is not needed
 dimuAna->SetProcessId(14);   //for single muon use dy=11, jpsi=12,  psi'=13, single muon =14
 dimuAna->SetSourceFlag(1);  //for target =1, dump =2, gap =3
 dimuAna->SetOutputFileName("RUS.root");

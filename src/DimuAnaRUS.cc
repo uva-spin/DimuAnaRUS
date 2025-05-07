@@ -215,9 +215,6 @@ int DimuAnaRUS::process_event(PHCompositeNode* startNode)
 	   return Fun4AllReturnCodes::EVENT_OK;
 	   }
 	*/
-	if (saveDimuonOnly && m_sq_dim_vec->empty()) {
-		return 0;  // Skip this event if no dimuons are present and the mode is enabled
-	}
 
 	eventID = m_evt->get_event_id();
 	/*
