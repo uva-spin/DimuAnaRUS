@@ -333,14 +333,14 @@ if(reco_mode==true){
 	//}
 
 	DimuAnaRUS* dimuAna = new DimuAnaRUS();
-        dimuAna->SetTreeName("tree");
+    dimuAna->SetTreeName("tree");
 	dimuAna->SetProcessId(14);   //for single muon use dy=11, jpsi=12,  psi'=13, single muon =14
 	dimuAna->SetSourceFlag(1);  //for target =1, dump =2, gap =3
 	dimuAna->SetMCTrueMode(true);
-        dimuAna->SetOutputFileName("RUS.root");
-        dimuAna->SetSaveOnlyDimuon(true);
-        dimuAna->SetRecoMode(reco_mode);
-        se->registerSubsystem(dimuAna);
+    dimuAna->SetOutputFileName("RUS.root");
+    dimuAna->SetRecoMode(reco_mode);
+    dimuAna->SetRecoDimuMode(true);
+    se->registerSubsystem(dimuAna);
 
 	const bool count_only_good_events = true;
 	se->run(nevent, count_only_good_events);
