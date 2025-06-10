@@ -11,9 +11,11 @@ class SQEvent;
 class SQHitVector;
 class SQTrackVector;
 class SQDimuonVector;
+class SQMCEvent;
 
 class DimuAnaRUS: public SubsysReco {
 	SQEvent* m_evt;
+	SQMCEvent* m_evt_true;
 	SQSpillMap* m_sp_map;
 	SQHitVector* m_hit_vec;
 	SQTrackVector * m_vec_trk;
@@ -35,14 +37,15 @@ class DimuAnaRUS: public SubsysReco {
 	bool mc_trig_mode;
 	bool saveDimuonOnly;
 	bool true_dimu_mode;
-	int process_id;
-	int source_flag;
+	int proc_id;
+	int SourceFlag;
+    bool sqhit_flag;
+    bool reco_dimu_mode;
 
-	void SetProcessId(int proc_id) { process_id = proc_id; }
-	void SetSourceFlag(int src_flag) { source_flag = src_flag; }
 	void SetMCTrueMode(bool enable) { true_mode = enable; }
 	void SetMCDimuonMode(bool enable) { true_dimu_mode = enable; }
 	void SetRecoMode(bool enable) { reco_mode = enable; }
+	void SetRecoDimuMode(bool enable) { reco_dimu_mode = enable; }
 	void SetDataTriggerEmu(bool enable) { 
 		data_trig_mode = enable; 
 		mc_trig_mode = !enable; // Automatically disable mc_trig_mode when data_trig_mode is enabled
@@ -54,6 +57,8 @@ class DimuAnaRUS: public SubsysReco {
 	}   
 
 	void SetSaveOnlyDimuon(bool enable) { saveDimuonOnly = enable; }
+	void SetSourceFlag(int flag) { SourceFlag = flag; }
+	void SetProcessId(int proc_id_) { proc_id = proc_id_; }
 
 	unsigned int EncodeProcess(int processID, int sourceFlag);
 	static int DecodeSourceFlag(unsigned int encoded);
@@ -66,13 +71,14 @@ class DimuAnaRUS: public SubsysReco {
 	int process_event(PHCompositeNode *startNode);
 	int End(PHCompositeNode *startNode);
 	void SetOutputFileName(const std::string name) { m_file_name = name; }
+    void EnableSQHit(bool enable) { sqhit_flag = enable; }
 
 	void SetTreeName(const std::string& name) { m_tree_name = name; }
 	void SetFileName(const std::string& name) { m_file_name = name; }
 	void ResetHitBranches();
 	void ResetTrueBranches();
-	void ResetTrackRecoBranches();
-	void ResetDimuRecoBranches();
+	void ResetRecoBranches();
+	void ResetRecoDimuBranches();
 
 	private:
 
@@ -113,18 +119,40 @@ class DimuAnaRUS: public SubsysReco {
 	std::vector<double> gx_st3, gy_st3, gz_st3;
 	std::vector<double> gpx_st3, gpy_st3, gpz_st3;
 
-	std::vector<double> rec_dimu_vx;
-        std::vector<double> rec_dimu_vy;
-        std::vector<double> rec_dimu_vz;
-        std::vector<double> rec_dimu_px;
-        std::vector<double> rec_dimu_py;
-        std::vector<double> rec_dimu_pz;
-        std::vector<double> rec_dimu_mass;
-        std::vector<double> rec_dimu_x1;
-        std::vector<double> rec_dimu_x2;
-        std::vector<double> rec_dimu_xf;
-	//std::vector<bool> top_bot;
-	//std::vector<bool> bot_top;
+	// ===== Dimuon target
+	std::vector<double> dimu_px_tgt;
+	std::vector<double> dimu_py_tgt;
+	std::vector<double> dimu_pz_tgt;
+	std::vector<double> dimu_mass_tgt;
+
+	// ===== Dimuon dump
+	std::vector<double> dimu_px_dmp;
+	std::vector<double> dimu_py_dmp;
+	std::vector<double> dimu_pz_dmp;
+	std::vector<double> dimu_mass_dmp;
+
+	// ===== Mu+ target
+	std::vector<double> mu_pos_px_tgt;
+	std::vector<double> mu_pos_py_tgt;
+	std::vector<double> mu_pos_pz_tgt;
+
+	// ===== Mu+ dump
+	std::vector<double> mu_pos_px_dmp;
+	std::vector<double> mu_pos_py_dmp;
+	std::vector<double> mu_pos_pz_dmp;
+
+	// ===== Mu− target
+	std::vector<double> mu_neg_px_tgt;
+	std::vector<double> mu_neg_py_tgt;
+	std::vector<double> mu_neg_pz_tgt;
+
+	// ===== Mu− dump
+	std::vector<double> mu_neg_px_dmp;
+	std::vector<double> mu_neg_py_dmp;
+	std::vector<double> mu_neg_pz_dmp;
+
+	std::vector<bool> top_bot;
+	std::vector<bool> bot_top;
 
 	std::vector<int> rec_charge;
 	std::vector<double> rec_vx, rec_vy, rec_vz;
@@ -133,6 +161,7 @@ class DimuAnaRUS: public SubsysReco {
 	std::vector<double> rec_px_st1, rec_py_st1, rec_pz_st1;
 	std::vector<double> rec_x_st3, rec_y_st3, rec_z_st3;
 	std::vector<double> rec_px_st3, rec_py_st3, rec_pz_st3;
+    std::vector<double> rec_chisq_dump, rec_chisq_upstream, rec_chisq_target;
 };
 
 #endif // _DimuAnaRUS.h_
