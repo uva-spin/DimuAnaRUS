@@ -21,4 +21,4 @@ comb->set_max_opening_angle(10);  // angle in degrees
 ## Running the Macro
 
 Running the Fun4All macro is the same as described here:
-[https://github.com/forhadnmsu/DimuAnaRUS/tree/main/mc_gen](https://github.com/forhadnmsu/DimuAnaRUS/tree/main/mc_gen)
+[https://github.com/uva-spin/DimuAnaRUS/tree/main/mc_gen](https://github.com/uva-spin/DimuAnaRUS/tree/main/mc_gen)
