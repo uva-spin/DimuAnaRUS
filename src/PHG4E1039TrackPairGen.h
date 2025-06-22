@@ -7,6 +7,10 @@
 
 #include <TGeoManager.h>
 #include <phgeom/PHGeomUtility.h>
+#include <TFile.h>
+#include <THnSparse.h>
+#include <TLorentzVector.h>
+
 
 class PHG4InEvent;
 class PHCompositeNode;
@@ -66,9 +70,14 @@ public:
   
   //! set the distribution function of particles about the vertex
   void set_vertex_size_function(FUNCTION r);
+  bool GenerateMomentumWithoutExpPDF(int muon_counter, int pdgcode, TLorentzVector &muon1, TLorentzVector &muon2, double &px, double &py, double &pz);
+  bool GenerateMomentumWithExpPDF(int muon_counter, double &px, double &py, double &pz);
+
 
   //! set the dimensions of the distribution of particles about the vertex
   void set_vertex_size_parameters(const double mean, const double width);
+  bool gen_with_exp_pdf;
+  void SetExpPDFMode(bool enable) { gen_with_exp_pdf = enable; }
 
   //!
   void set_pxpypz_range(
@@ -89,8 +98,10 @@ void set_par2_pxpypz_range(
                 );
 
   void set_max_opening_angle(const double x_max);
+  void set_max_muon_angle_with_z(const double x_max);
    //! Enable legacy vertex gen
    void enableLegacyVtxGen() { _legacy_vertexgenerator = true; } //Abi
+  double _maxProbability;
 
 private:
 
@@ -140,11 +151,19 @@ private:
   double _py_par2_min, _py_par2_max;
   double _pz_par2_min, _pz_par2_max;
 
-  double _theta_min, _theta_max;
+  double _theta_min, _theta_max, _theta_mu_max;
   int    _eventcount;
   PHG4InEvent* _ineve;
   SQEvent* _evt; //< An output node
   SQMCEvent* _mcevt; //< An output node
+  TH2F *hProb;
+  TFile* _normFlowFile;         // ROOT file for norm flow momentum map
+  THnSparseD* _hMomentumMap;
+  static constexpr double MUON_MASS = 0.1056;    // GeV/c^2
+  static constexpr double BEAM_ENERGY = 120.0;   // GeV
+  static constexpr double PROTON_MASS = 0.938;   // GeV/c^2
+
+
 
   bool _legacy_vertexgenerator;
   SQPrimaryVertexGen* _vertexGen;

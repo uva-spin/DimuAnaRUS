@@ -46,6 +46,8 @@ int Fun4Sim(const int nevent = 10)
 
 	//! Use SQPrimaryVertexGen or not.
 	const bool SQ_vtx_gen = true;
+	const bool gen_particle_with_exp_pdf =false;
+	const bool reco_mode = true;
 
 	recoConsts *rc = recoConsts::instance();
 	rc->set_IntFlag("RUNNUMBER", 5433); /// The geometry is selected based on run number.
@@ -84,30 +86,30 @@ int Fun4Sim(const int nevent = 10)
 		se->registerSubsystem(hr);
 	}
 
-	// multi particle gun
-	if(gen_particle) {
-		PHG4E1039TrackPairGen *genp = new PHG4E1039TrackPairGen("MUP");
-		genp->set_seed(125);
-		genp->add_particles("mu+", nmu);  // mu+,e+,proton,pi+,Upsilon
-		genp->set_seed(120);
-		genp->add_particles("mu-", nmu);
-		if (SQ_vtx_gen) genp->enableLegacyVtxGen();
-		else{
-			genp->set_vertex_distribution_function(PHG4E1039TrackPairGen::Uniform,
-					PHG4E1039TrackPairGen::Uniform,
-					PHG4E1039TrackPairGen::Uniform);
-			genp->set_vertex_distribution_mean(0.0, 0.0, target_coil_pos_z);
-			genp->set_vertex_distribution_width(0.0, 0.0, 0.0);
-			genp->set_vertex_size_function(PHG4E1039TrackPairGen::Uniform);
-			genp->set_vertex_size_parameters(0.0, 0.0);
-		}
-		genp->set_par1_pxpypz_range(-6.0,6.0, -4,4, 5,70);
-		genp->set_par2_pxpypz_range(-6.0,6.0, -4,4, 5,70);
-		genp->set_max_opening_angle(10.0);
-		//genp->set_pt_range(0.0, 3.0);
-		//genp->Verbosity(1);
-		se->registerSubsystem(genp);
+	//combinatoric gen
+	PHG4E1039TrackPairGen *comb = new PHG4E1039TrackPairGen("MUP");
+	comb->set_seed(125);
+	comb->add_particles("mu+", nmu); 
+	comb->set_seed(120);
+	comb->add_particles("mu-", nmu);
+	if (SQ_vtx_gen) comb->enableLegacyVtxGen();
+	else{
+		comb->set_vertex_distribution_function(PHG4E1039TrackPairGen::Uniform,
+				PHG4E1039TrackPairGen::Uniform,
+				PHG4E1039TrackPairGen::Uniform);
+		comb->set_vertex_distribution_mean(0.0, 0.0, target_coil_pos_z);
+		comb->set_vertex_distribution_width(0.0, 0.0, 0.0);
+		comb->set_vertex_size_function(PHG4E1039TrackPairGen::Uniform);
+		comb->set_vertex_size_parameters(0.0, 0.0);
 	}
+	if(gen_particle_with_exp_pdf) comb->SetExpPDFMode(true);
+	else{
+		comb->set_par1_pxpypz_range(-6.0,6.0, -4,4, 5,100);
+		comb->set_par2_pxpypz_range(-6.0,6.0, -4,4, 5,100);
+		comb->set_max_opening_angle(10);
+	}
+	//comb->Verbosity(1);
+	se->registerSubsystem(comb);
 
 
 	// Fun4All G4 module
@@ -154,9 +156,9 @@ int Fun4Sim(const int nevent = 10)
 	se->registerSubsystem(new TruthNodeMaker());
 
 	//Apply additonal cut after event generation
-        //MuonTrackFilter* muon_filter = new MuonTrackFilter();
-        //muon_filter->SetAngleThreshold(0.0, 50.0); //in degree
-        //se->registerSubsystem(muon_filter);
+	//MuonTrackFilter* muon_filter = new MuonTrackFilter();
+	//muon_filter->SetAngleThreshold(0.0, 50.0); //in degree
+	//se->registerSubsystem(muon_filter);
 
 	/// Save only events that are in the geometric acceptance.
 	SQGeomAcc* geom_acc = new SQGeomAcc();
@@ -193,23 +195,24 @@ int Fun4Sim(const int nevent = 10)
 	//se->registerSubsystem(evt_filter);
 	// Tracking module
 	// input - we need a dummy to drive the event loop
+	if(reco_mode==true){
+		SQReco* reco = new SQReco();
+		reco->Verbosity(1);
+		reco->set_legacy_rec_container(false); 
+		reco->set_geom_file_name((string)gSystem->Getenv("E1039_RESOURCE") + "/geometry/geom_run005433.root");
+		reco->set_enable_KF(true);
+		reco->setInputTy(SQReco::E1039);
+		reco->setFitterTy(SQReco::KFREF);
+		reco->set_evt_reducer_opt("none");
+		reco->set_enable_eval_dst(true);
+		for (int ii = 0; ii <= 3; ii++) reco->add_eval_list(ii);
+		reco->set_enable_eval(true);
+		se->registerSubsystem(reco);
 
-	SQReco* reco = new SQReco();
-	reco->Verbosity(1);
-	reco->set_legacy_rec_container(false); 
-	reco->set_geom_file_name((string)gSystem->Getenv("E1039_RESOURCE") + "/geometry/geom_run005433.root");
-	reco->set_enable_KF(true);
-	reco->setInputTy(SQReco::E1039);
-	reco->setFitterTy(SQReco::KFREF);
-	reco->set_evt_reducer_opt("none");
-	reco->set_enable_eval_dst(true);
-	for (int ii = 0; ii <= 3; ii++) reco->add_eval_list(ii);
-	reco->set_enable_eval(true);
-	se->registerSubsystem(reco);
-
-	SQVertexing* vtx = new SQVertexing();
-	vtx->Verbosity(1);
-	se->registerSubsystem(vtx);
+		SQVertexing* vtx = new SQVertexing();
+		vtx->Verbosity(1);
+		se->registerSubsystem(vtx);
+	}
 	if(read_hepmc) {
 		Fun4AllHepMCInputManager *in = new Fun4AllHepMCInputManager("HEPMCIN");
 		in->Verbosity(10);
@@ -226,16 +229,19 @@ int Fun4Sim(const int nevent = 10)
 	///////////////////////////////////////////
 
 	// DST output manager
-	Fun4AllDstOutputManager *out = new Fun4AllDstOutputManager("DSTOUT", "DST.root");
-	se->registerOutputManager(out);
+	//Fun4AllDstOutputManager *out = new Fun4AllDstOutputManager("DSTOUT", "DST.root");
+	//se->registerOutputManager(out);
 
 	DimuAnaRUS* dimuAna = new DimuAnaRUS();
-        dimuAna->SetTreeName("tree");
-        dimuAna->SetOutputFileName("RUS.root");
-        dimuAna->SetSaveOnlyDimuon(true);
+    	dimuAna->SetTreeName("tree");
+        dimuAna->SetProcessId(15);   //for single muon use dy=11, jpsi=12,  psi'=13, single muon =14, combinatoric =15
+        dimuAna->SetSourceFlag(1);  //for target =1, dump =2, gap =3
         dimuAna->SetMCTrueMode(true);
-        dimuAna->SetRecoMode(true);
-        se->registerSubsystem(dimuAna);
+    	dimuAna->SetOutputFileName("RUS.root");
+    	dimuAna->SetRecoMode(reco_mode);
+    	dimuAna->SetRecoDimuMode(true);
+    	se->registerSubsystem(dimuAna);
+
 
 	const bool count_only_good_events = true;
 	se->run(nevent, count_only_good_events);

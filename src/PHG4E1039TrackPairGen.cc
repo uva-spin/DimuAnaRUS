@@ -1,9 +1,11 @@
 #include "PHG4E1039TrackPairGen.h"
+#include <cmath>
+#include "TFile.h"
+#include "TH2F.h"
 #include <g4main/PHG4Particlev2.h>
 #include <g4main/PHG4InEvent.h>
 #include "g4main/PHG4VtxPoint.h"
 #include "g4main/PHG4TruthInfoContainer.h"
-
 #include <fun4all/Fun4AllReturnCodes.h>
 #include <phool/getClass.h>
 #include <phool/recoConsts.h>
@@ -11,12 +13,9 @@
 #include <phool/PHIODataNode.h>
 #include <interface_main/SQEvent_v1.h>
 #include <interface_main/SQMCEvent_v1.h>
-
 #include <Geant4/G4ParticleTable.hh>
 #include <Geant4/G4ParticleDefinition.hh>
-
 #include <gsl/gsl_randist.h>
-
 #include <cstdlib>
 #include <cmath>
 #include <cassert>
@@ -75,6 +74,7 @@ PHG4E1039TrackPairGen::PHG4E1039TrackPairGen(const string &name):
   _ineve(NULL), 
   _evt(NULL),
   _mcevt(NULL),
+  gen_with_exp_pdf(false),
   _legacy_vertexgenerator(false)
 {
 
@@ -192,6 +192,24 @@ void PHG4E1039TrackPairGen::set_vertex_size_parameters(const double mean, const 
 }
 
 int PHG4E1039TrackPairGen::InitRun(PHCompositeNode *topNode) {
+
+if(gen_with_exp_pdf){
+	_normFlowFile = TFile::Open("NormMomentumMap.root");
+	if (!_normFlowFile || _normFlowFile->IsZombie()) {
+		cout << PHWHERE << "::Error - cannot open NormMomentumMap.root" << endl;
+		return Fun4AllReturnCodes::ABORTRUN;
+	}
+	_hMomentumMap = dynamic_cast<THnSparseD*>(_normFlowFile->Get("MomentumMap"));
+	if (!_hMomentumMap) {
+		cout << PHWHERE << "::Error - MomentumMap histogram not found in file" << endl;
+		return Fun4AllReturnCodes::ABORTRUN;
+	}
+	// Verify histogram dimensions
+	if (_hMomentumMap->GetNdimensions() != 6) {
+		cout << PHWHERE << "::Error - MomentumMap histogram does not have 6 dimensions" << endl;
+		return Fun4AllReturnCodes::ABORTRUN;
+	}
+}
 
   if ((_vertex_func_x != Uniform)&&(_vertex_func_x != Gaus)) {
     cout << PHWHERE << "::Error - unknown vertex distribution function requested" << endl;
@@ -311,171 +329,231 @@ int PHG4E1039TrackPairGen::InitRun(PHCompositeNode *topNode) {
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
-
 int PHG4E1039TrackPairGen::process_event(PHCompositeNode *topNode) {
-  if (verbosity > 0) {
-    cout << "====================== PHG4SimpleEventGenerator::process_event() =====================" << endl;
-    cout <<"PHG4SimpleEventGenerator::process_event - reuse_existing_vertex = "<<reuse_existing_vertex<<endl;
-  }
-  int vtxindex = -1;
-  int trackid = -1;
+    if (verbosity > 0) {
+        std::cout << "====================== PHG4E1039TrackPairGen::process_event() =====================" << std::endl;
+        std::cout << "PHG4E1039TrackPairGen::process_event - reuse_existing_vertex = " << reuse_existing_vertex << std::endl;
+    }
 
-  TLorentzVector muon1;
-  TLorentzVector muon2;
-  int muon_counter=0;
-  if(! _particle_names.size() ==2) return Fun4AllReturnCodes::ABORTRUN;
-  
-  for (unsigned int i=0; i<_particle_names.size(); ++i) {
-	  muon_counter++;
+    if (!_ineve || !_evt || !_mcevt) {
+        std::cout << PHWHERE << "::Error - PHG4InEvent, SQEvent, or SQMCEvent is null" << std::endl;
+        return Fun4AllReturnCodes::ABORTRUN;
+    }
 
-	  if (_legacy_vertexgenerator) {
-		  TVector3 vtx = _vertexGen->generateVertex();
-		  vtx_x = vtx.X();        
-		  vtx_y = vtx.Y();
-		  vtx_z = vtx.Z();
-	  } else if (!ReuseExistingVertex(topNode)) { // vtx_x, vtx_y and vtx_z are doubles from the base class. common methods modify those, please no private copies. at some point we might rely on them being up to date.
-		  // generate a new vertex point
-		  vtx_x = smearvtx(_vertex_x,_vertex_width_x,_vertex_func_x);
-		  vtx_y = smearvtx(_vertex_y,_vertex_width_y,_vertex_func_y);
-		  vtx_z = smearvtx(_vertex_z,_vertex_width_z,_vertex_func_z);
-	  } 
+    if (_particle_names.size() != 2) {
+        std::cout << PHWHERE << "::Error - Exactly 2 particles required, got " << _particle_names.size() << ": ";
+        for (const auto& p : _particle_names) std::cout << p.first << " ";
+        std::cout << std::endl;
+        return Fun4AllReturnCodes::ABORTRUN;
+    }
 
-	  vtx_x += _vertex_offset_x;
-	  vtx_y += _vertex_offset_y;
-	  vtx_z += _vertex_offset_z;
+    int vtxindex = -1;
+    int trackid = -1;
+    TLorentzVector muon1;
+    TLorentzVector muon2;
+    int muon_counter = 0;
 
-	  if (verbosity > 0) {
-		  cout <<"PHG4SimpleEventGenerator::process_event - vertex center"<<reuse_existing_vertex
-			  << vtx_x<<", "<< vtx_y<<", "<< vtx_z<<" cm"
-			  <<endl;
-	  }
-	  string pdgname = _particle_names[i].first;
-	  int pdgcode = get_pdgcode(pdgname);
-	  unsigned int nparticles = _particle_names[i].second;
-	  for (unsigned int j=0; j<nparticles; ++j) {
+    // Vertex generation
+    if (_legacy_vertexgenerator) {
+        TVector3 vtx = _vertexGen->generateVertex();
+        vtx_x = vtx.X();
+        vtx_y = vtx.Y();
+        vtx_z = vtx.Z();
+    } else if (!ReuseExistingVertex(topNode)) {
+        vtx_x = smearvtx(_vertex_x, _vertex_width_x, _vertex_func_x);
+        vtx_y = smearvtx(_vertex_y, _vertex_width_y, _vertex_func_y);
+        vtx_z = smearvtx(_vertex_z, _vertex_width_z, _vertex_func_z);
+    }
+    vtx_x += _vertex_offset_x;
+    vtx_y += _vertex_offset_y;
+    vtx_z += _vertex_offset_z;
 
-		  if ((_vertex_size_width > 0.0)||(_vertex_size_mean != 0.0)) {
-			  double r = smearvtx(_vertex_size_mean,_vertex_size_width,_vertex_size_func_r);
-			  double x = 0.0;
-			  double y = 0.0;
-			  double z = 0.0;
-			  gsl_ran_dir_3d(RandomGenerator,&x,&y,&z);
-			  x *= r;
-			  y *= r;
-			  z *= r;
+    if (verbosity > 0) {
+        std::cout << "PHG4E1039TrackPairGen::process_event - vertex center " << reuse_existing_vertex
+                  << " (" << vtx_x << ", " << vtx_y << ", " << vtx_z << ") cm" << std::endl;
+    }
 
-			  vtxindex = _ineve->AddVtx(vtx_x+x,vtx_y+y,vtx_z+z,_t0);
-		  } else if ((i==0)&&(j==0)) {
-			  vtxindex = _ineve->AddVtx(vtx_x,vtx_y,vtx_z,_t0);
-		  }
+    if (vtx_z < -690) {
+        std::cout << PHWHERE << "::Error - Vertex z = " << vtx_z << " < -690 cm" << std::endl;
+        return Fun4AllReturnCodes::ABORTEVENT;
+    }
 
-		  ++trackid;
+    for (unsigned int i = 0; i < _particle_names.size(); ++i) {
+        muon_counter++;
+        std::string pdgname = _particle_names[i].first;
+        int pdgcode = get_pdgcode(pdgname);
+        if (pdgcode == 0) {
+            std::cout << PHWHERE << "::Error - Invalid PDG code for particle " << pdgname << std::endl;
+            return Fun4AllReturnCodes::ABORTRUN;
+        }
+        unsigned int nparticles = _particle_names[i].second;
 
-		  double px = std::numeric_limits<double>::max();
-		  double py = std::numeric_limits<double>::max();
-		  double pz = std::numeric_limits<double>::max();
-		  double angle;
+        for (unsigned int j = 0; j < nparticles; ++j) {
+            if ((_vertex_size_width > 0.0) || (_vertex_size_mean != 0.0)) {
+                if (!RandomGenerator) {
+                    std::cout << PHWHERE << "::Error - RandomGenerator is null" << std::endl;
+                    return Fun4AllReturnCodes::ABORTRUN;
+                }
+                if (_vertex_size_func_r != Uniform && _vertex_size_func_r != Gaus) {
+                    std::cout << PHWHERE << "::Error - Invalid vertex size function" << std::endl;
+                    return Fun4AllReturnCodes::ABORTRUN;
+                }
+                double r = smearvtx(_vertex_size_mean, _vertex_size_width, _vertex_size_func_r);
+                double x = 0.0, y = 0.0, z = 0.0;
+                gsl_ran_dir_3d(RandomGenerator, &x, &y, &z);
+                x *= r;
+                y *= r;
+                z *= r;
+                vtxindex = _ineve->AddVtx(vtx_x + x, vtx_y + y, vtx_z + z, _t0);
+            } else if ((i == 0) && (j == 0)) {
+                vtxindex = _ineve->AddVtx(vtx_x, vtx_y, vtx_z, _t0);
+            }
+            ++trackid;
 
-		  int iteration = 0;
-		  const int max_iterations = 100;
-		  if (muon_counter == 1) {
-		  	vtxindex = _ineve->AddVtx(vtx_x,vtx_y,vtx_z,_t0);
-			 if (verbosity > 0) cout << "Mu+ Vertex (first iteration): (" << vtx_x << ", " << vtx_y << ", " << vtx_z << ")" << endl;
-		  	do {
+            double px, py, pz;
+            // Momentum generation
+            if (gen_with_exp_pdf) {
+                if (!GenerateMomentumWithExpPDF(muon_counter, px, py, pz)) {
+                    return Fun4AllReturnCodes::ABORTRUN;
+                }
+            } else {
+                if (!GenerateMomentumWithoutExpPDF(muon_counter, pdgcode, muon1, muon2, px, py, pz)) {
+                    return Fun4AllReturnCodes::ABORTEVENT;
+                }
+            }
 
-			if (verbosity > 0) cout << "_pz_par1_min: "<< _pz_par1_min << "_pz_par1_max: " << _pz_par1_max << endl;
+            if (muon_counter == 1) {
+                muon1.SetXYZM(px, py, pz, MUON_MASS);
+            } else if (muon_counter == 2) {
+                muon2.SetXYZM(px, py, pz, MUON_MASS);
+            }
 
-			  px = (_px_par1_max - _px_par1_min) * gsl_rng_uniform_pos(RandomGenerator) + _px_par1_min;
-			  py = (_py_par1_max - _py_par1_min) * gsl_rng_uniform_pos(RandomGenerator) + _py_par1_min;
-			  pz = (_pz_par1_max - _pz_par1_min) * gsl_rng_uniform_pos(RandomGenerator) + _pz_par1_min;
+            double m = get_mass(pdgcode);
+            double e = sqrt(px * px + py * py + pz * pz + m * m);
+            PHG4Particle *particle = new PHG4Particlev2();
+            particle->set_track_id(trackid);
+            particle->set_vtx_id(vtxindex);
+            particle->set_parent_id(0);
+            particle->set_name(pdgname);
+            particle->set_pid(pdgcode);
+            particle->set_px(px);
+            particle->set_py(py);
+            particle->set_pz(pz);
+            particle->set_e(e);
 
+            _ineve->AddParticle(vtxindex, particle);
+            if (embedflag != 0) _ineve->AddEmbeddedParticle(particle, embedflag);
+        }
+    }
 
-			  if (verbosity > 0) cout << "Mu- Vertex P (1St iteration): (" << px << ", " << py << ", " << pz << ")" << endl;
+    _evt->set_run_id(0);
+    _evt->set_spill_id(0);
+    _evt->set_event_id(++_eventcount);
+    _mcevt->set_cross_section(0.0);
+    _mcevt->set_weight(1.0);
 
-			  muon1.SetXYZM(px, py, pz, 0.1056);
-			  iteration++;
-			}while (!(muon1.Pt() > _pt_min && muon1.Pt() < _pt_max && iteration < max_iterations));
-			//cout << "mu+  first iterations: "<< iteration <<endl; 
-		  }
+    if (verbosity > 0) {
+        _ineve->identify();
+        std::cout << "======================================================================================" << std::endl;
+    }
 
-		  if((iteration==100))return Fun4AllReturnCodes::ABORTEVENT;
-
-		  if (muon_counter == 2) {
-		  	    vtxindex = _ineve->AddVtx(vtx_x,vtx_y,vtx_z,_t0);
-			  double angle, xF;
-			  do {
-			if (verbosity > 0) {
-				cout << "_pz_par2_min: "<< _pz_par2_min << "_pz_par2_max: " << _pz_par2_max << endl;
-				cout << "Mu- Vertex (second iteration): (" << vtx_x << ", " << vtx_y << ", " << vtx_z << ")" << endl;
-				cout << "Mu- Vertex P (second iteration): (" << px << ", " << py << ", " << pz << ")" << endl;
-			   }
-                          px = (_px_par2_max - _px_par2_min) * gsl_rng_uniform_pos(RandomGenerator) + _px_par2_min;
-                          py = (_py_par2_max - _py_par2_min) * gsl_rng_uniform_pos(RandomGenerator) + _py_par2_min;
-                          pz = (_pz_par2_max - _pz_par2_min) * gsl_rng_uniform_pos(RandomGenerator) + _pz_par2_min;
-
-				  muon2.SetXYZM(px, py, pz, 0.1056); 
-				  angle = muon1.Vect().Angle(muon2.Vect()) * (180.0 / M_PI);  // Convert from radians to degrees
-				  Double_t mp = 0.938;
-				  Double_t ebeam = 120.;
-				  TLorentzVector p_beam(0., 0., sqrt(ebeam * ebeam - mp * mp), ebeam);
-				  TLorentzVector p_target(0., 0., 0., mp);
-				  TLorentzVector p_cms = p_beam + p_target;
-				  TLorentzVector p_sum = muon1 + muon2;
-				  double mass = p_sum.M();
-				  Double_t s = p_cms.M2();
-				  TVector3 bv_cms = p_cms.BoostVector();
-				  p_sum.Boost(-bv_cms);
-				  xF = 2. * p_sum.Pz() / TMath::Sqrt(s) / (1. - mass * mass / s);
-				  }while (!((muon2.Pt() >= _pt_min && muon2.Pt() <= _pt_max) && angle < _theta_max && xF < 1.0) && iteration < max_iterations);
-			  	//cout <<"iterations mu second track: "<< iteration <<"pt of the muon2: "<< muon2.Pt() << "angle: "<< angle <<endl;
-			  iteration=0;
-		  }
-		  if((iteration==100))return Fun4AllReturnCodes::ABORTEVENT;
-		  iteration=0;
-		  if (verbosity > 0 &&  muon_counter == 2){
-			  cout << "angle of the muons: "<< angle << endl;
-			  cout << "px 1: " << muon1.Px() << endl;
-			  cout << "py 1: " << muon1.Py() << endl;
-			  cout << "pz 1: " << muon1.Pz() << endl;
-			  cout << "px 2: " << muon2.Px() << endl;
-			  cout << "py 2: " << muon2.Py() << endl;
-			  cout << "pz 2: " << muon2.Pz() << endl;
-		  }
-
-		  double m = get_mass(pdgcode);
-		  double e = sqrt(px*px+py*py+pz*pz+m*m);
-	
-		  //cout << "pdg code: "<< pdgcode << endl;
-		  PHG4Particle *particle = new PHG4Particlev2();
-		  particle->set_track_id(trackid);
-		  particle->set_vtx_id(vtxindex);
-		  particle->set_parent_id(0);
-		  particle->set_name(pdgname);
-		  particle->set_pid(pdgcode);
-		  particle->set_px(px);
-		  particle->set_py(py);
-		  particle->set_pz(pz);
-		  particle->set_e(e);
-
-		  _ineve->AddParticle(vtxindex, particle);
-		  if (embedflag != 0) _ineve->AddEmbeddedParticle(particle,embedflag);
-	  }
-  }
-
-  _evt->set_run_id  (0);
-  _evt->set_spill_id(0);
-  _evt->set_event_id(++_eventcount);
-  _mcevt->set_cross_section(0.0);
-  _mcevt->set_weight       (1.0);
-
-  if (verbosity > 0) {
-	  _ineve->identify();
-	  cout << "======================================================================================" << endl;
-  } 
-
-  return Fun4AllReturnCodes::EVENT_OK;
+    return Fun4AllReturnCodes::EVENT_OK;
 }
 
+// Helper function for momentum generation with exponential PDF
+bool PHG4E1039TrackPairGen::GenerateMomentumWithExpPDF(int muon_counter, double &px, double &py, double &pz) {
+    if (!_hMomentumMap) {
+        std::cout << PHWHERE << "::Error - _hMomentumMap is null" << std::endl;
+        return false;
+    }
+
+    Double_t point[6];
+    _hMomentumMap->GetRandom(point);
+
+    if (muon_counter == 1) {
+        px = point[0];  // mu_pos_px
+        py = point[1];  // mu_pos_py
+        pz = point[2];  // mu_pos_pz
+    } else if (muon_counter == 2) {
+        px = point[3];  // mu_neg_px
+        py = point[4];  // mu_neg_py
+        pz = point[5];  // mu_neg_pz
+    }
+
+    if (verbosity > 0) {
+        std::cout << (muon_counter == 1 ? "mu+" : "mu-") << " (px, py, pz): ("
+                  << px << ", " << py << ", " << pz << ")" << std::endl;
+    }
+
+    return true;
+}
+
+bool PHG4E1039TrackPairGen::GenerateMomentumWithoutExpPDF(int muon_counter, int pdgcode, TLorentzVector &muon1, TLorentzVector &muon2, double &px, double &py, double &pz) {
+    if (!RandomGenerator) {
+        std::cout << PHWHERE << "::Error - RandomGenerator is null" << std::endl;
+        return false;
+    }
+
+    if (std::isnan(_theta_max)) {
+        std::cout << PHWHERE << "::Error - _theta_max is not set (NAN)" << std::endl;
+        return false;
+    }
+
+    int iteration = 0;
+    const int max_iterations = 100;
+    double angle, xF;
+
+    if (muon_counter == 1) {
+        if (verbosity > 0) std::cout << "Mu+ Vertex: (" << vtx_x << ", " << vtx_y << ", " << vtx_z << ")" << std::endl;
+        do {
+            if (verbosity > 0) std::cout << "par1 pdgcode: " << pdgcode << ", _pz_par1_min: " << _pz_par1_min << ", _pz_par1_max: " << _pz_par1_max << std::endl;
+            px = _px_par1_min + (_px_par1_max - _px_par1_min) * gsl_rng_uniform_pos(RandomGenerator);
+            py = _py_par1_min + (_py_par1_max - _py_par1_min) * gsl_rng_uniform_pos(RandomGenerator);
+            pz = _pz_par1_min + (_pz_par1_max - _pz_par1_min) * gsl_rng_uniform_pos(RandomGenerator);
+            muon1.SetXYZM(px, py, pz, 0.1056); // Muon mass = 0.1056 GeV/c²
+            if (verbosity > 0) std::cout << "par1 (px, py, pz): (" << px << ", " << py << ", " << pz << "), Pt: " << muon1.Pt() << std::endl;
+            iteration++;
+        } while (!(muon1.Pt() >= _pt_min && muon1.Pt() <= _pt_max) && iteration < max_iterations);
+        if (iteration >= max_iterations) {
+            std::cout << PHWHERE << "::Warning - Max iterations reached for muon 1, Pt=" << muon1.Pt() << std::endl;
+            return false;
+        }
+    } else if (muon_counter == 2) {
+        if (verbosity > 0) std::cout << "Mu- Vertex: (" << vtx_x << ", " << vtx_y << ", " << vtx_z << ")" << std::endl;
+        do {
+            if (verbosity > 0) {
+                std::cout << "loop 2 pdgcode: " << pdgcode << std::endl;
+                std::cout << "_pz_par2_min: " << _pz_par2_min << ", _pz_par2_max: " << _pz_par2_max << std::endl;
+                std::cout << "Vertex: (" << vtx_x << ", " << vtx_y << ", " << vtx_z << ")" << std::endl;
+            }
+            px = _px_par2_min + (_px_par2_max - _px_par2_min) * gsl_rng_uniform_pos(RandomGenerator);
+            py = _py_par2_min + (_py_par2_max - _py_par2_min) * gsl_rng_uniform_pos(RandomGenerator);
+            pz = _pz_par2_min + (_pz_par2_max - _pz_par2_min) * gsl_rng_uniform_pos(RandomGenerator);
+            muon2.SetXYZM(px, py, pz, 0.1056); // Muon mass = 0.1056 GeV/c²
+            angle = muon1.Vect().Angle(muon2.Vect()) * (180.0 / M_PI);
+            TLorentzVector p_beam(0., 0., sqrt(BEAM_ENERGY * BEAM_ENERGY - PROTON_MASS * PROTON_MASS), BEAM_ENERGY);
+            TLorentzVector p_target(0., 0., 0., PROTON_MASS);
+            TLorentzVector p_cms = p_beam + p_target;
+            TLorentzVector p_sum = muon1 + muon2;
+            double mass = p_sum.M();
+            double s = p_cms.M2();
+            TVector3 bv_cms = p_cms.BoostVector();
+            p_sum.Boost(-bv_cms);
+            xF = 2. * p_sum.Pz() / TMath::Sqrt(s) / (1. - mass * mass / s);
+            if (verbosity > 0) {
+                std::cout << "par2 (px, py, pz): (" << px << ", " << py << ", " << pz << "), Pt: " << muon2.Pt()
+                          << ", angle: " << angle << ", xF: " << xF << std::endl;
+            }
+            iteration++;
+        } while (!((muon2.Pt() >= _pt_min && muon2.Pt() <= _pt_max) && angle < _theta_max && xF < 1.0) && iteration < max_iterations);
+        if (iteration >= max_iterations) {
+            std::cout << PHWHERE << "::Warning - Max iterations reached for muon 2, Pt=" << muon2.Pt()
+                      << ", angle=" << angle << ", xF=" << xF << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
 
 int PHG4E1039TrackPairGen::End(PHCompositeNode *topNode)
 {
@@ -513,7 +591,6 @@ void PHG4E1039TrackPairGen::set_par2_pxpypz_range(const double x_min,
 void PHG4E1039TrackPairGen::set_max_opening_angle(const double x_max){
          _theta_max = x_max;
 }
-
 
 double
 PHG4E1039TrackPairGen::smearvtx(const double position, const double width, FUNCTION dist) const

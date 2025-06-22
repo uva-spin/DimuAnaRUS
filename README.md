@@ -1,18 +1,6 @@
 ## Goal
 The goal of this `DimuAnaRUS` module is to get the input data from a ROOT file (in DST format) and convert them into RUS (ROOT Universal Structure) format. This includes triggers, hits, true/reconstructed track or dimuon information, and event details. It supports a wide range of data formats such as integers, doubles, and booleans, and can store this data in flat, vector, or array formats.
 
-### Instructions for Adding Reconstructed Variables to RUS File
-To include true track or reconstructed variables in your RUS file, follow these steps:
-
-1. **Set the appropriate dimuon road option:**
-   - For simulated data, set `SetMCTriggerEmu()` to `true`.
-   - For experimental data, set `SetDataTriggerEmu()` to `true`. The `SetDataTriggerEmu()` and `SetMCTriggerEmu()` functions are mutually exclusive, so if you set one to `true`, the other will automatically be set to `false`.
-	- These functions ensure that the dimuons are satisfied in the `top-bot` or `bot-top` roads.
-
-2. **Enable reconstruction mode:**
-   - Set `SetRecoMode()` to `true` to add the reconstructed variables.
-   - Set `SetMCMode()` to `true` to add the MC true variables.
-
 # Updated Variable Names and Types
 ## Event-Level Variables
 | Variable Name      | Type               | Description                          |   
@@ -60,39 +48,79 @@ To include true track or reconstructed variables in your RUS file, follow these 
 | `gpy_st3`    | `std::vector<double>` | Y-component of momentum at station 3         |
 | `gpz_st3`    | `std::vector<double>` | Z-component of momentum at station 3         |
 
+## Reconstructed Dimuon Variables
+These variables store information about reconstructed dimuons (`mu+ mu-` pairs), will be obtained from the `SRecDimuon` class, at the default vertex, target (`tgt`), and dump (`dump`) regions.
 
-## Reco-Level Variables
-| Variable Name     | Type                  | Description                                       |
-|-------------------|-----------------------|--------------------------------------------------|
-| `rec_charge`     | `std::vector<int>`     | Charge of the reconstructed particle             |
-| `rec_vx`        | `std::vector<double>`  | X-coordinate of the reconstructed vertex         |
-| `rec_vy`        | `std::vector<double>`  | Y-coordinate of the reconstructed vertex         |
-| `rec_vz`        | `std::vector<double>`  | Z-coordinate of the reconstructed vertex         |
-| `rec_px`        | `std::vector<double>`  | X-component of the reconstructed momentum        |
-| `rec_py`        | `std::vector<double>`  | Y-component of the reconstructed momentum        |
-| `rec_pz`        | `std::vector<double>`  | Z-component of the reconstructed momentum        |
-| `rec_x_st1`     | `std::vector<double>`  | X-coordinate at station 1                        |
-| `rec_y_st1`     | `std::vector<double>`  | Y-coordinate at station 1                        |
-| `rec_z_st1`     | `std::vector<double>`  | Z-coordinate at station 1                        |
-| `rec_px_st1`    | `std::vector<double>`  | X-momentum at station 1                          |
-| `rec_py_st1`    | `std::vector<double>`  | Y-momentum at station 1                          |
-| `rec_pz_st1`    | `std::vector<double>`  | Z-momentum at station 1                          |
-| `rec_x_st3`     | `std::vector<double>`  | X-coordinate at station 3                        |
-| `rec_y_st3`     | `std::vector<double>`  | Y-coordinate at station 3                        |
-| `rec_z_st3`     | `std::vector<double>`  | Z-coordinate at station 3                        |
-| `rec_px_st3`    | `std::vector<double>`  | X-momentum at station 3                          |
-| `rec_py_st3`    | `std::vector<double>`  | Y-momentum at station 3                          |
-| `rec_pz_st3`    | `std::vector<double>`  | Z-momentum at station 3                          |
-| `rec_dimu_vx`   | `std::vector<double>`  | X-coordinate of the reconstructed dimuon vertex  |
-| `rec_dimu_vy`   | `std::vector<double>`  | Y-coordinate of the reconstructed dimuon vertex  |
-| `rec_dimu_vz`   | `std::vector<double>`  | Z-coordinate of the reconstructed dimuon vertex  |
-| `rec_dimu_px`   | `std::vector<double>`  | X-component of the reconstructed dimuon momentum |
-| `rec_dimu_py`   | `std::vector<double>`  | Y-component of the reconstructed dimuon momentum |
-| `rec_dimu_pz`   | `std::vector<double>`  | Z-component of the reconstructed dimuon momentum |
-| `rec_dimu_mass` | `std::vector<double>`  | Mass of the reconstructed dimuon system          |
-| `rec_dimu_xf`   | `std::vector<double>`  | Xf for the reconstructed dimuon |
-| `rec_dimu_x1`   | `std::vector<double>`  | X1 for the reconstructed dimuon |
-| `rec_dimu_x2`   | `std::vector<double>`  | X2 for the reconstructed dimuon |
+| Variable Name        | Type                  | Description                                                                      | User Functions                      |
+|----------------------|-----------------------|----------------------------------------------------------------------------------|-------------------------------------|
+| `rec_dimuon_id`      | `std::vector<int>`    | List of dimuon IDs.                                                              | `SRecDimuon::get_dimuon_id()`       |
+|`rec_dimuon_true_id`  | `std::vector<int>`    | List of reconstructed dimuon IDs only when the true dimuon exists.               | `SRecDimuon::get_rec_dimuon_id()`   |
+| `rec_track_id_pos`   | `std::vector<int>`    | Track ID of the positive muon track (returns the index of rhe `SRecTrack`).      | `SRecDimuon::get_track_id_pos()`    |
+| `rec_track_id_neg`   | `std::vector<int>`    | Track ID of the negative muon track (returns the index of rhe `SRecTrack`).      | `SRecDimuon::get_track_id_neg()`    |
+| `rec_px_pos`         | `std::vector<double>` | x-component of the momentum of the vertexed (default) positive muon of the dimuon| `SRecDimuon::get_mom_pos().Px()`    |
+| `rec_py_pos`         | `std::vector<double>` | y-component of the momentum of the vertexed (default) positive muon of the dimuon| `SRecDimuon::get_mom_pos().PY()`    |
+| `rec_pz_pos`         | `std::vector<double>` | z-component of the momentum of the vertexed (default) positive muon of the dimuon| `SRecDimuon::get_mom_pos().Pz()`    |
+| `rec_px_neg`         | `std::vector<double>` | x-component of the momentum of the vertexed (default) negative muon of the dimuon| `SRecDimuon::get_mom_neg().Px()`    |
+| `rec_py_neg`         | `std::vector<double>` | y-component of the momentum of the vertexed (default) negative muon of the dimuon| `SRecDimuon::get_mom_neg().Py()`    |
+| `rec_pz_neg`         | `std::vector<double>` | z-component of the momentum of the vertexed (default) negative muon of the dimuon| `SRecDimuon::get_mom_pos().Pz()`    |
+| `rec_x_dimuon`       | `std::vector<double>` | x-component of the position of the vertexed (default) dimuon                     | `SRecDimuon::get_pos().X()`         |
+| `rec_y_dimuon`       | `std::vector<double>` | y-component of the position of the vertexed (default) dimuon                     | `SRecDimuon::get_pos().Y()`         |
+| `rec_z_dimuon`       | `std::vector<double>` | z-component of the position of the vertexed (default) dimuon                     | `SRecDimuon::get_pos().Z()`         |
+| `rec_px_pos_tgt`     | `std::vector<double>` | x-component of the momentum of the vertexed (target) positive muon of the dimuon | `SRecDimuon::p_pos_target().Px()`   |
+| `rec_py_pos_tgt`     | `std::vector<double>` | y-component of the momentum of the vertexed (target) positive muon of the dimuon | `SRecDimuon::p_pos_target().Py()`   |
+| `rec_pz_pos_tgt`     | `std::vector<double>` | z-component of the momentum of the vertexed (target) positive muon of the dimuon | `SRecDimuon::p_pos_target().Pz()`   |
+| `rec_px_neg_tgt`     | `std::vector<double>` | x-component of the momentum of the vertexed (target) negative muon of the dimuon | `SRecDimuon::p_neg_target.Px()`     |
+| `rec_py_neg_tgt`     | `std::vector<double>` | y-component of the momentum of the vertexed (target) negative muon of the dimuon | `SRecDimuon::p_neg_target.Py()`     |
+| `rec_pz_neg_tgt`     | `std::vector<double>` | z-component of the momentum of the vertexed (target) negative muon of the dimuon | `SRecDimuon::p_neg_target.Pz()`     |
+| `rec_px_pos_dump`    | `std::vector<double>` | x-component of the momentum of the vertexed (dump) positive muon of the dimuon   | `SRecDimuon::p_pos_dump.Px ()`      |
+| `rec_py_pos_dump`    | `std::vector<double>` | y-component of the momentum of the vertexed (dump) positive muon of the dimuon   | `SRecDimuon::p_pos_dump.Py ()`      |
+| `rec_pz_pos_dump`    | `std::vector<double>` | z-component of the momentum of the vertexed (dump) positive muon of the dimuon   | `SRecDimuon::p_pos_dump.Pz ()`      |
+| `rec_px_neg_dump`    | `std::vector<double>` | x-component of the momentum of the vertexed (dump) negative muon of the dimuon   | `SRecDimuon::p_neg_dump.Px ()`      |
+| `rec_py_neg_dump`    | `std::vector<double>` | y-component of the momentum of the vertexed (dump) negative muon of the dimuon   | `SRecDimuon::p_neg_dump.Py ()`      |
+| `rec_pz_neg_dump`    | `std::vector<double>` | z-component of the momentum of the vertexed (dump) negative muon of the dimuon   | `SRecDimuon::p_neg_dump.Pz ()`      |
+
+## Reconstructed Track Variables
+These variables store information about reconstructed muon tracks, will be obtained from the `SRecTrack` class, at the vertex, stations 1 and 3, target, and dump regions.
+
+| Variable Name       | Type                  | Description                                                                 | User Functions                         |
+|---------------------|-----------------------|-----------------------------------------------------------------------------|----------------------------------------|
+| `rec_track_id`      | `std::vector<int>`    | Track ID of the recons. muon (set as the index of the vector`rec_track_id).`|                                        |
+| `rec_charge`        | `std::vector<int>`    | Charge of the reconstructed muons.                                          | `SRecTrack::get_charge()`              |
+| `rec_vx`            | `std::vector<double>` | x-coordinate of the reconstructed vertex.                                   | `SRecTrack::get_pos_vtx().X()`         |
+| `rec_vy`            | `std::vector<double>` | y-coordinate of the reconstructed vertex.                                   | `SRecTrack::get_pos_vtx().Y()`         |
+| `rec_vz`            | `std::vector<double>` | z-coordinate of the reconstructed vertex.                                   | `SRecTrack::get_pos_vtx().Z()`         |
+| `rec_px`            | `std::vector<double>` | x-component of the reconstructed momentum at the vertex.                    | `SRecTrack::get_mom_vtx().Px()`        |
+| `rec_py`            | `std::vector<double>` | y-component of the reconstructed momentum at the vertex.                    | `SRecTrack::get_mom_vtx().Py()`        |
+| `rec_pz`            | `std::vector<double>` | z-component of the reconstructed momentum at the vertex.                    | `SRecTrack::get_mom_vtx().Pz()`        |
+| `rec_x_st1`         | `std::vector<double>` | x-coordinate of the reconstructed track at station 1.                       | `SRecTrack::get_pos_st1().X()`         |
+| `rec_y_st1`         | `std::vector<double>` | y-coordinate of the reconstructed track at station 1.                       | `SRecTrack::get_pos_st1().Y()`         |
+| `rec_z_st1`         | `std::vector<double>` | z-coordinate of the reconstructed track at station 1.                       | `SRecTrack::get_pos_st1().Z()`         |
+| `rec_px_st1`        | `std::vector<double>` | x-component of the reconstructed momentum at station 1.                     | `SRecTrack::get_mom_st1().Px()`        |
+| `rec_py_st1`        | `std::vector<double>` | y-component of the reconstructed momentum at station 1.                     | `SRecTrack::get_mom_st1().Py()`        |
+| `rec_pz_st1`        | `std::vector<double>` | z-component of the reconstructed momentum at station 1.                     | `SRecTrack::get_mom_st1().Pz()`        |
+| `rec_x_st3`         | `std::vector<double>` | x-coordinate of the reconstructed track at station 3.                       | `SRecTrack::get_pos_st3().X()`         |
+| `rec_y_st3`         | `std::vector<double>` | y-coordinate of the reconstructed track at station 3.                       | `SRecTrack::get_pos_st3().Y()`         |
+| `rec_z_st3`         | `std::vector<double>` | z-coordinate of the reconstructed track at station 3.                       | `SRecTrack::get_pos_st3().Z()`         |
+| `rec_px_st3`        | `std::vector<double>` | x-component of the reconstructed momentum at station 3.                     | `SRecTrack::get_mom_st3().Px()`        |
+| `rec_py_st3`        | `std::vector<double>` | y-component of the reconstructed momentum at station 3.                     | `SRecTrack::get_mom_st3().Py()`        |
+| `rec_pz_st3`        | `std::vector<double>` | z-component of the reconstructed momentum at station 3.                     | `SRecTrack::get_mom_st3().Pz()`        |
+| `rec_num_hits`      | `std::vector<int>`    | Total hits associated with the reconstructed track.                         | `SRecTrack::get_num_hits()`            |
+| `rec_chisq`         | `std::vector<double>` | Global track fit chi-squared value.                                         | `SRecTrack::get_chisq()`               |
+| `rec_chisq_target`  | `std::vector<double>` | Chi-squared value of the track fit at the target.                           | `SRecTrack::get_chisq_target()`        |
+| `rec_chisq_dump`    | `std::vector<double>` | Chi-squared value of the track fit at the dump.                             | `SRecTrack::get_chisq_dump()`          |
+| `rec_chisq_upstream`| `std::vector<double>` | Chi-squared value of the track fit in the upstream region.                  | `SRecTrack::get_chisq_upstream()`      |
+| `rec_x_tgt`         | `std::vector<double>` | x-coordinate of the reconstructed track at the target.                      | `SRecTrack::get_pos_target().X()`      |
+| `rec_y_tgt`         | `std::vector<double>` | y-coordinate of the reconstructed track at the target.                      | `SRecTrack::get_pos_target().Y()`      |
+| `rec_z_tgt`         | `std::vector<double>` | z-coordinate of the reconstructed track at the target.                      | `SRecTrack::get_pos_target().Z()`      |
+| `rec_x_dump`        | `std::vector<double>` | x-coordinate of the reconstructed track at the dump.                        | `SRecTrack::get_pos_dump().X()`        |
+| `rec_y_dump`        | `std::vector<double>` | y-coordinate of the reconstructed track at the dump.                        | `SRecTrack::get_pos_dump().Y()`        |
+| `rec_z_dump`        | `std::vector<double>` | z-coordinate of the reconstructed track at the dump.                        | `SRecTrack::get_pos_dump().Z()`        |
+| `rec_px_tgt`        | `std::vector<double>` | x-component of the reconstructed momentum at the target.                    | `SRecTrack::get_mom_target().Px()`     |
+| `rec_py_tgt`        | `std::vector<double>` | y-component of the reconstructed momentum at the target.                    | `SRecTrack::get_mom_target().Py()`     |
+| `rec_pz_tgt`        | `std::vector<double>` | z-component of the reconstructed momentum at the target.                    | `SRecTrack::get_mom_target().Pz()`     |
+| `rec_px_dump`       | `std::vector<double>` | x-component of the reconstructed momentum at the dump.                      | `SRecTrack::get_mom_dump().Px()`       |
+| `rec_py_dump`       | `std::vector<double>` | y-component of the reconstructed momentum at the dump.                      | `SRecTrack::get_mom_dump().Py()`       |
+| `rec_pz_dump`       | `std::vector<double>` | z-component of the reconstructed momentum at the dump.                      | `SRecTrack::get_mom_dump().Pz()`       |
 
 
 ``` Compilation before running the Fun4All macro                                                      
