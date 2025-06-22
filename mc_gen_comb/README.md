@@ -1,11 +1,24 @@
-# Event Generation and Reconstruction with RUS
+# Background Generation using `PHG4E1039TrackPairGen`
+`PHG4E1039TrackPairGen` is a combinatoric background event generator built within the Fun4All framework, designed to simulate dimuon events. It supports two configurable modes for generating muon pairs:
 
-This module allows you to perform event generation and reconstruction using the **`Fun4AllSim.C`** macro. Similar to the [SimChainDev module](https://github.com/E1039-Collaboration/e1039-analysis/tree/master/SimChainDev), this script facilitates event simulation, but with an **additional feature**: support for the **RUS file manager** for input and output handling.
+- **Random kinematic generation**: Momenta and vertex positions are sampled from flat or Gaussian distributions as defined by the user.
+- **Probability-based sampling**: Muon momenta are drawn from a pre-computed 6-dimensional histogram (`THnSparseD`) containing realistic momentum correlations derived from experimental data.
 
-## Key Features
-- Generate events using **`Fun4AllSim.C`**.
-- Seamless integration with the **RUS file manager** for enhanced input/output management using either DimuAnaRUS (using SubsysReco) or using [Fun4AllVectFileManager](https://github.com/E1039-Collaboration/e1039-analysis/tree/master/Fun4AllVectFileManager).
+> To enable probability-based generation, set the flag `gen_particle_with_exp_pdf = true`.
+>**Note:** This mode is under active development. Please validate your output distributions before use.
+In random mode, each muon's momentum can be independently defined through user-specified 3D ranges:
 
-When you want a large set of simulated events, you should run the simulation on the grid. The procedure is explained in this [Wiki page](https://github.com/E1039-Collaboration/e1039-wiki/wiki/Submit-jobs-to-the-grid).
+```cpp
+comb->set_par1_pxpypz_range(-6.0, 6.0, -4.0, 4.0, 5.0, 100.0);  // mu+
+comb->set_par2_pxpypz_range(-6.0, 6.0, -4.0, 4.0, 5.0, 100.0);  // mu-
+```
 
+To restrict the opening angle between the generated muon pair, use:
+```cpp
+comb->set_max_opening_angle(10);  // angle in degrees
+```
 
+## Running the Macro
+
+Running the Fun4All macro is the same as described here:
+[https://github.com/forhadnmsu/DimuAnaRUS/tree/main/mc_gen](https://github.com/forhadnmsu/DimuAnaRUS/tree/main/mc_gen)
