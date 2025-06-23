@@ -24,7 +24,6 @@ do
   chmod -R 01755 $work/$id
   cd $work/$id/
   cp $dir_macros/*.C .
-  cp $dir_macros/*.cfg .
   cp $dir_macros/*.slurm .
   cp -r $dir_macros/../../DimuAnaRUS .
   sed -i "s/1234/$nevents/" Fun4Sim.C
